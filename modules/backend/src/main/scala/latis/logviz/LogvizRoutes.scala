@@ -23,8 +23,6 @@ import pureconfig.module.catseffect.syntax.*
 import latis.logviz.model.Event
 import latis.logviz.splunk.*
 
-import cats.effect.unsafe.implicits.global
-
 /** 
  * Defines Routes
  * 
@@ -69,7 +67,7 @@ object LogvizRoutes extends Http4sDsl[IO] {
           }
 
           val sse = eventToServerSent(eventStream)
-
+          
           count *> Ok(sse).map(_.putHeaders(`Content-Type`(MediaType.parse("text/even-stream").toOption.get))) // adding the correct header
         }
       else 
