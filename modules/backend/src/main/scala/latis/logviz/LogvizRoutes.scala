@@ -23,6 +23,8 @@ import pureconfig.module.catseffect.syntax.*
 import latis.logviz.model.Event
 import latis.logviz.splunk.*
 
+import cats.effect.unsafe.implicits.global
+
 /** 
  * Defines Routes
  * 
@@ -60,7 +62,21 @@ object LogvizRoutes extends Http4sDsl[IO] {
 
         runSC.use { sclient =>
           val eventStream: Stream[IO, Event] = sclient.query()
-          Ok(eventStream)
+
+          // checking the size of the stream -------------------------------------------
+          val program: IO[Long] = eventStream.compile.count
+
+          val test = program.flatMap { count =>
+            for { 
+              _ <- IO.println(s"The count is: $count")
+            } yield ()
+          }
+          val _ = test.unsafeRunSync()
+          // --------------------------------------------------------------------------
+
+          val sse = eventToServerSent(eventStream)
+
+          Ok(sse).map(_.putHeaders(`Content-Type`(MediaType.parse("text/even-stream").toOption.get))) // adding the correct header
         }
       else 
         // getting events from events.json
@@ -74,38 +90,40 @@ object LogvizRoutes extends Http4sDsl[IO] {
           decodedResult match {
             case Right(jsonList) => 
               val events: List[Event] = jsonList.map(_.as[Event].toOption.get) // mapping to Event type
-
-              val sse: List[ServerSentEvent] = events.map{event => event match {
-                case Event.Start(time: String) =>
-                  val data: String = s"time: $time"
-                  ServerSentEvent(Some(data), Some("start"))
-                case Event.Request(id: String, time: String, request: String) =>
-                  val data: String = s"id: $id\ntime: $time\nrequest: $request"
-                  ServerSentEvent(Some(data), Some("request"))
-                case Event.Response(id: String, time: String, status: Int) =>
-                  val stat: String = status.toString
-                  val data: String = s"id: $id\ntime: $time\nstatus: $stat"
-                  ServerSentEvent(Some(data), Some("response"))
-                case Event.Success(id: String, time: String, duration: Long) =>
-                  val dur: String = duration.toString
-                  val data: String = s"id: $id\ntime: $time\nduration: $dur"
-                  ServerSentEvent(Some(data), Some("success"))
-                case Event.Failure(id: String, time: String, msg: String) =>
-                  val data: String = s"id: $id\ntime: $time\nmessage: $msg"
-                  ServerSentEvent(Some(data), Some("failure"))
-                }
-              } // mapping Event to ServerSentEvent
-
-              val eventStream: EventStream[IO] = Stream.emits(sse).covary[IO]
-              eventStream
-
+              val eventStream = Stream.emits(events)
+              eventToServerSent(eventStream)
             case Left(error) =>
               Stream.raiseError[IO](new Exception(s"Error parsing events.json into event stream with error: $error"))
               // TODO: what to do about SSE in this case?
           }
         }
-        Ok(parsedJson).map(_.putHeaders(`Content-Type`(MediaType.parse("text/even-stream").toOption.get))) // adding the correct header
 
-        // Ok(parsedJson)
+        Ok(parsedJson).map(_.putHeaders(`Content-Type`(MediaType.parse("text/even-stream").toOption.get))) // adding the correct header
   }
+}
+
+def eventToServerSent(eventStream: Stream[IO, Event]): EventStream[IO] = {
+  eventStream.map { event => 
+    event match {
+      case Event.Start(time: String) =>
+        val data: String = s"time: $time"
+        ServerSentEvent(Some(data), Some("start"))
+      case Event.Request(id: String, time: String, request: String) =>
+        val data: String = s"id: $id\ntime: $time\nrequest: $request"
+        ServerSentEvent(Some(data), Some("request"))
+      case Event.Response(id: String, time: String, status: Int) =>
+        val stat: String = status.toString
+        val data: String = s"id: $id\ntime: $time\nstatus: $stat"
+        ServerSentEvent(Some(data), Some("response"))
+      case Event.Success(id: String, time: String, duration: Long) =>
+        val dur: String = duration.toString
+        val data: String = s"id: $id\ntime: $time\nduration: $dur"
+        ServerSentEvent(Some(data), Some("success"))
+      case Event.Failure(id: String, time: String, msg: String) =>
+        val data: String = s"id: $id\ntime: $time\nmessage: $msg"
+        ServerSentEvent(Some(data), Some("failure"))
+      case null => 
+        ServerSentEvent(Some("Uh Oh"))
+    }
+  } // mapping Event to ServerSentEvent
 }
