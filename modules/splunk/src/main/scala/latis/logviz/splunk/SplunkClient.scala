@@ -98,8 +98,6 @@ object SplunkClient {
           }
 
           private def getResults(sessionkey: String, sid: String, total: Int): IO[Json] = {
-            println(s"Parsing $total results...")
-
             val request = Request[IO](
               method = Method.GET,
               uri = (splunkuri / "services" / "search" / "jobs" / sid / "events") // use /results if we want transformed events (performing stats or operations on events)
@@ -118,7 +116,6 @@ object SplunkClient {
             val decodedResult = response.hcursor.downField("results").as[List[SplunkMessage]]
             val mStrm: Stream[IO, SplunkMessage] = decodedResult match {
               case Right(messages) => 
-                println("Done!")
                 Stream.emits(messages).covary[IO]
               case Left(error) =>
                 Stream.raiseError(new Exception(s"Error parsing Json into Stream with error: $error"))
@@ -174,6 +171,7 @@ object SplunkClient {
                 sid        <- generateQuery(sessionkey, query) // Step 2: Generate a query
                 _          <- waitLoop(sessionkey, sid) // Step 3: Check the status of a query
                 total      <- getTotalResults(sessionkey, sid)
+                _          <- IO.println(s"Parsing $total results...")
                 res        <- getResults(sessionkey, sid, total) // Step 4: Get the results from the query
               } yield res
             }.flatMap(makeStream) // Step 5: Make a stream of logs and get a stream of events

@@ -63,20 +63,14 @@ object LogvizRoutes extends Http4sDsl[IO] {
         runSC.use { sclient =>
           val eventStream: Stream[IO, Event] = sclient.query()
 
-          // checking the size of the stream -------------------------------------------
-          val program: IO[Long] = eventStream.compile.count
-
-          val test = program.flatMap { count =>
-            for { 
-              _ <- IO.println(s"The count is: $count")
-            } yield ()
+          // counting the amount of events that were matched
+          val count: IO[Unit] = eventStream.compile.count.flatMap { count =>
+            IO.println(s"Processed $count events...")
           }
-          val _ = test.unsafeRunSync()
-          // --------------------------------------------------------------------------
 
           val sse = eventToServerSent(eventStream)
 
-          Ok(sse).map(_.putHeaders(`Content-Type`(MediaType.parse("text/even-stream").toOption.get))) // adding the correct header
+          count *> Ok(sse).map(_.putHeaders(`Content-Type`(MediaType.parse("text/even-stream").toOption.get))) // adding the correct header
         }
       else 
         // getting events from events.json
