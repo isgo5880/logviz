@@ -1,5 +1,6 @@
 package latis.logviz
 
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
@@ -20,6 +21,7 @@ import fs2.Stream
 
 import latis.logviz.model.Event
 import latis.logviz.model.Rectangle
+import latis.logviz.model.RequestEvent
 
 
 
@@ -240,8 +242,25 @@ class EventComponent(stream: Stream[IO, Event], requestDetails: HtmlElement[IO])
                       case Rectangle(event, x, y, width, height, color) => {
                         if (mouseX >= x && mouseX <= x + width && mouseY <= y && mouseY >= y + height) {
                           IO{
+                            val ev = event(0) // event is a (RequestEvent, Int)
+                            // we currently don't get the correlation id or thread id
+
+                            // get path, start time, end time, elapsed time, thread id, and if there was an exception (None)
+                            val info: String = ev match {
+                              case RequestEvent.Server(time) =>
+                                s"Event: Start\ntime: $time"
+                              case RequestEvent.Request(start, url) =>
+                                val shortUrl = url.split(" Headers")(0)
+                                val duration = Duration.between(LocalDateTime.parse(start), LocalDateTime.now(ZoneOffset.UTC))
+                                s"Event: Request\r\nPath: $shortUrl\r\nStart Time: $start\r\nEnd Time: Ongoing\r\nElapsed: ${duration.toMinutesPart()} minutes, ${duration.toSecondsPart()} seconds\r\nException: (None)"
+                              case RequestEvent.Success(start, url, end, duration) =>
+                                val shortUrl = url.split(" Headers")(0)
+                                s"Event: Success\r\nPath: $shortUrl\r\nStart Time: $start\r\nEnd Time: $end\r\nElapsed: $duration ms\r\nException: (None)"
+                              case RequestEvent.Failure(start, url, end, msg) => s"$event"
+                            }
                             requestDetails.style.fontSize = "20px"
-                            requestDetails.textContent = s"EVENT DETAILS: $event"
+                            requestDetails.style.whiteSpace = "pre"
+                            requestDetails.textContent = info
                           }
                         } else {
                           IO.unit

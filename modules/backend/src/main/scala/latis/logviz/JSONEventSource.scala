@@ -15,6 +15,7 @@ import latis.logviz.model.Event
 
 val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS")
 
+/** A JSON event source that reads events from a JSON file */
 class JSONEventSource extends EventSource {
   override def getEvents(start: LocalDateTime, end: LocalDateTime): Stream[IO, Event] =
 
