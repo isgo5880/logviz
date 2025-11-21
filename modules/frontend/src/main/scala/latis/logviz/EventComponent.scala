@@ -16,6 +16,7 @@ import cats.effect.Resource
 import cats.syntax.all.*
 import cats.effect.std.Dispatcher
 import cats.effect.kernel.Ref
+import fs2.concurrent.Signal
 import fs2.concurrent.SignallingRef
 import fs2.dom.HtmlElement
 import fs2.Stream
@@ -37,7 +38,7 @@ import cats.effect.std.Supervisor
   * @param liveRef whether live button is toggled
   */
 class EventComponent(
-  stream: Stream[IO, Event],
+  signal: Signal[IO, Stream[IO, Event]],
   eventRef: Ref[IO, Option[EventDetails]],
   startTime: SignallingRef[IO, LocalDateTime],
   endTime: SignallingRef[IO, LocalDateTime],
@@ -60,8 +61,11 @@ class EventComponent(
       canvas      =  canvasIO.asInstanceOf[HTMLCanvasElement]
       context     =  canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
       eParser     <- Resource.eval(EventParser())
-      _           <- Resource.eval(sup.supervise(stream.evalTap(event =>
-                      eParser.parse(event)).compile.drain).void)
+      _           <- Resource.eval(sup.supervise(signal.discrete.switchMap { stream => 
+                      Stream.eval(stream.evalTap{ event =>
+                        eParser.parse(event)
+                      }.compile.drain)
+                    }.compile.drain).void)
       scrollRef   <- Resource.eval(Ref[IO].of(0.0))
       isLive      <- Resource.eval(Ref[IO].of(true))
       rectRef     <- Resource.eval(Ref[IO].of(List[Rectangle]()))

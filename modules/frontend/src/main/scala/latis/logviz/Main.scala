@@ -7,11 +7,13 @@ import calico.IOWebApp
 import calico.html.io.{*, given}
 import cats.effect.IO
 import cats.effect.Resource
+import fs2.Stream
 import fs2.concurrent.SignallingRef
 import fs2.dom.HtmlElement
 import org.http4s.dom.FetchClientBuilder
 import org.http4s.client.Client
 
+import latis.logviz.model.Event
 
 /**
  * Renders HTML elements for log events using EventClient and EventComponent
@@ -58,7 +60,8 @@ object Main extends IOWebApp {
 
       evComponent =  new EventDetailComponent(eventRef)
       info        <- evComponent.render
-      component   =  new EventComponent(ec.getEvents, eventRef, startRef, endRef, liveRef)
+      events      <- Resource.eval(SignallingRef[IO].of[Stream[IO, Event]](ec.getEvents))
+      component   =  new EventComponent(events, eventRef, startRef, endRef, liveRef)
       timeline    <- component.render
 
       // timeSelect  <- div(idAttr:= "time-selection", liveButton, timeRange) /***
