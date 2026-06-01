@@ -7,7 +7,7 @@ val circeVersion = "0.14.15"
 val fs2Version = "3.13.0"
 val http4sVersion = "0.23.34"
 val log4catsVersion = "2.8.0"
-val logbackVersion = "1.5.32"
+val logbackVersion = "1.5.33"
 val pureconfigVersion = "0.17.10"
 
 val commonSettings = Seq(
@@ -57,9 +57,9 @@ lazy val backend = project
       "io.circe" %% "circe-generic" % circeVersion,
       "io.circe" %% "circe-parser" % circeVersion,
       "co.fs2" %% "fs2-core" % fs2Version,
-      "org.gnieh" %% "fs2-data-json" % "1.13.0",
-      "org.gnieh" %% "fs2-data-json-circe" % "1.13.0",
-      "org.gnieh" %% "fs2-data-text" % "1.13.0",
+      "org.gnieh" %% "fs2-data-json" % "1.14.0",
+      "org.gnieh" %% "fs2-data-json-circe" % "1.14.0",
+      "org.gnieh" %% "fs2-data-text" % "1.14.0",
       "org.http4s" %% "http4s-core" % http4sVersion,
       "org.http4s" %% "http4s-dsl" % http4sVersion,
       "org.typelevel" %% "log4cats-slf4j" % log4catsVersion
