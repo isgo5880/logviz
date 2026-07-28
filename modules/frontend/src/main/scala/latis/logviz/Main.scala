@@ -38,6 +38,8 @@ object Main extends IOWebApp {
       now         <- Resource.eval(IO(LocalDateTime.now(ZoneOffset.UTC)))
       startRef    <- Resource.eval(SignallingRef[IO].of(now.minusHours(24)))
       endRef      <- Resource.eval(SignallingRef[IO].of(now))
+      pickedStart <- Resource.eval(SignallingRef[IO].of(now.minusHours(24)))
+      pickedEnd   <- Resource.eval(SignallingRef[IO].of(now))
       liveRef     <- Resource.eval(SignallingRef[IO].of(false))
       events      <- Resource.eval(SignallingRef[IO].of[Stream[IO, Event]](Stream.empty))
       instanceRef <- Resource.eval(SignallingRef[IO].of[String](""))
@@ -88,7 +90,8 @@ object Main extends IOWebApp {
                             end   <- endRef.get
                             inst  <- instanceRef.get
                             _     <- liveRef.set(false)
-                            _     <- events.set(ec.getEvents(start.toString(), end.toString(), inst))
+                            _     <- pickedStart.set(start)
+                            _     <- pickedEnd.set(end)
                           } yield ()
                         )
                       )
@@ -138,7 +141,7 @@ object Main extends IOWebApp {
 
       evComponent =  new EventDetailComponent(eventRef)
       info        <- evComponent.render
-      component   =  new EventComponent(events, eventRef, startRef, endRef, liveRef, zoomRef)
+      component   =  new EventComponent(events, eventRef, pickedStart, pickedEnd, liveRef, zoomRef)
       timeline    <- component.render
       
       instances   <- Resource.eval(ec.getInstances)
