@@ -37,6 +37,8 @@ object SplunkClient {
       .build
       .map { client => 
         new SplunkClient {
+          private val eventsPerPage = 50000 // Splunk's maximum is 50,000
+
           /** Creates a session key to be used for Splunk queries */
           private def getSessionKey(username: String, password: String): IO[String] = {
             val request = Request[IO](
@@ -149,7 +151,7 @@ object SplunkClient {
             *
             * @param authHeader the authorization headers used to query Splunk
             * @param sid the search id generated when we created our search using generateQuery
-            * @param total the total amount of results Splunk returned
+            * @param offset the index of the first item to be returned from Splunk
             * @return the results returned from Splunk in JSON format
             */
           private def getResults(authHeader: Authorization, sid: String, offset: Int, endpath: String = "events"): IO[Json] = {
@@ -158,7 +160,7 @@ object SplunkClient {
               uri = (splunkuri / "services" / "search" / "jobs" / sid / endpath) // use /results if we want transformed events (performing stats or operations on events)
                 .withQueryParam("output_mode", "json")
                 .withQueryParam("offset", s"$offset") // index of the first result to return
-                .withQueryParam("count", 50000) // maximum number of results to return
+                .withQueryParam("count", eventsPerPage) // maximum number of results to return
             ).putHeaders(
               authHeader
             ) 
@@ -235,7 +237,7 @@ object SplunkClient {
             def querySplunk(acc: Int, res: Stream[IO, Event]): Stream[IO, Event] = {
               if (acc < total) {
                 val newRes = res ++ Stream.eval(getResults(authHeader, sid, acc)).flatMap(makeStream)
-                querySplunk(acc + 50000, newRes)
+                querySplunk(acc + eventsPerPage, newRes)
               } else {
                 res
               }
