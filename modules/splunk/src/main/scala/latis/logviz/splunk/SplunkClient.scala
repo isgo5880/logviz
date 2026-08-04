@@ -262,23 +262,7 @@ object SplunkClient {
             // make the query from args
             val eTime = start.toEpochSecond(ZoneOffset.UTC).toString()
             val lTime = end.toEpochSecond(ZoneOffset.UTC).toString()
-
-            val basicQuery = s"search index=$index source=$source earliest_time=$eTime latest_time=$lTime"
-            val query = if (source == "latis3-lisird-7") {
-              val innerQuery = basicQuery + """ Content-Length: 6981 | rex field=line "^[^=\n]*=(?P<request_id>[^\)]+)" | table request_id"""
-              basicQuery + s" NOT [$innerQuery] | reverse"
-            } else if (source == "latis3-lisird-6") {
-              val innerQuery = basicQuery + """ Content-Length: 6981 | rex field=line "^[^=\n]*=(?P<request_id>[^\)]+)" | table request_id"""
-              basicQuery + s" NOT [$innerQuery] | reverse"
-            } else if (source == "latis3-aim-11") {
-              val innerQuery = basicQuery + """ Content-Length: 24719 | rex field=line "^[^=\n]*=(?P<request_id>[^\)]+)" | table request_id"""
-              basicQuery + s" NOT [$innerQuery] | reverse"
-            } else if (source == "latis3-packets-cute-9") {
-              val innerQuery = basicQuery + """ Content-Length: 224 | rex field=line "^[^=\n]*=(?P<request_id>[^\)]+)" | table request_id"""
-              basicQuery + s" NOT [$innerQuery] | reverse"
-            } else {
-              s"search index=$index source=$source earliest_time=$eTime latest_time=$lTime | reverse"
-            }
+            val query = s"search index=$index source=$source earliest_time=$eTime latest_time=$lTime | reverse"
 
             Stream.eval {
               for {
