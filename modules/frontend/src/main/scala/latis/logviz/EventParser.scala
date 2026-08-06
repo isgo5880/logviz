@@ -1,9 +1,13 @@
 package latis.logviz
 
+import java.time.LocalDateTime
+import java.time.temporal.ChronoUnit
+
 import cats.effect.IO
 import cats.effect.kernel.Ref
 import cats.effect.std.PQueue
 import cats.syntax.all.*
+import fs2.concurrent.SignallingRef
 
 import latis.logviz.model.RequestEvent
 import latis.logviz.model.Event
@@ -20,7 +24,7 @@ trait EventParser {
  * Keeping track of the maximum number of concurrent events at a time to determine number of columns to draw
 */
 object EventParser {
-  def apply(): IO[EventParser] = {
+  def apply(startTime: SignallingRef[IO, LocalDateTime]): IO[EventParser] = {
     for {
       //ongoing request events mapped to concurrent depth
       eventsRef 		<- Ref[IO].of(Map[String, (RequestEvent, Column)]())
@@ -153,10 +157,22 @@ object EventParser {
                             >> IO(currDepth)
 
                           case Some((RequestEvent.Partial(start, status), currDepth)) =>
-                            compEventsRef.update(lst =>
-                              (RequestEvent.Partial(time, s"successful event with response status of: $status, duration: $duration"), 
-                              currDepth) +: lst)
-                            >> IO(currDepth)
+                            for {
+                              start <- startTime.get
+                              successTime = LocalDateTime.parse(time)
+                              // if we should have had a partial request event and we don't, discard, otherwise update the partial event 
+                              eventStart = successTime.minus(duration, ChronoUnit.MILLIS)
+                              d     <- if (start.isAfter(eventStart)) {
+                                        // a valid partial event, update it
+                                        compEventsRef.update(lst =>
+                                          (RequestEvent.Partial(time, s"successful event with response status of: $status, duration: $duration"), 
+                                          currDepth) +: lst)
+                                        >> IO(currDepth)
+                                      } else {
+                                        // we should have had a partial request event and we don't
+                                        IO(currDepth.copy(used = false))
+                                      }
+                            } yield d
 
                           case Some((_, currDepth)) => 
                             colCounter.update(c => c - 1) >>
