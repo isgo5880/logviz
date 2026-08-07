@@ -60,14 +60,14 @@ class EventComponent(
       timeline      <- div(idAttr:= "timeline", canvasIO, sizer)
       canvas        =  canvasIO.asInstanceOf[HTMLCanvasElement]
       context       =  canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
-      eParser       <- Resource.eval(EventParser(startTime))
+      eParser       <- Resource.eval(EventParser(startTime.get))
       parserRef     <- Resource.eval(Ref[IO].of(eParser))
       parserUpdated <- Resource.eval(Ref[IO].of(false))
       alertRef      <- Resource.eval(Ref[IO].of(true))
       _             <- Resource.eval(sup.supervise(signal.discrete.drop(1).switchMap { eventStream => 
                         // making a new parser
                         val newParser = for {
-                          parser <- EventParser(startTime)
+                          parser <- EventParser(startTime.get)
                           _      <- parserRef.set(parser)
                           _      <- alertRef.set(true)
                         } yield parser

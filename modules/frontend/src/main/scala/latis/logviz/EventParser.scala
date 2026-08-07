@@ -7,7 +7,6 @@ import cats.effect.IO
 import cats.effect.kernel.Ref
 import cats.effect.std.PQueue
 import cats.syntax.all.*
-import fs2.concurrent.SignallingRef
 
 import latis.logviz.model.RequestEvent
 import latis.logviz.model.Event
@@ -24,7 +23,7 @@ trait EventParser {
  * Keeping track of the maximum number of concurrent events at a time to determine number of columns to draw
 */
 object EventParser {
-  def apply(startTime: SignallingRef[IO, LocalDateTime]): IO[EventParser] = {
+  def apply(startTime: IO[LocalDateTime]): IO[EventParser] = {
     for {
       //ongoing request events mapped to concurrent depth
       eventsRef 		<- Ref[IO].of(Map[String, (RequestEvent, Column)]())
@@ -158,7 +157,7 @@ object EventParser {
 
                           case Some((RequestEvent.Partial(start, status), currDepth)) =>
                             for {
-                              start <- startTime.get
+                              start <- startTime
                               successTime = LocalDateTime.parse(time)
                               // if we should have had a partial request event and we don't, discard, otherwise update the partial event 
                               eventStart = successTime.minus(duration, ChronoUnit.MILLIS)
