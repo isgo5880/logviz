@@ -77,72 +77,38 @@ object EventParser {
           //becomes completed event if status is an error-> no longer waiting on any additional log events
           //else wait for log events with corresponding ids
           case Event.Response(id, time, status) => 
-            if (status >= 400) {
-              for {
-                map     <- eventsRef.get
-                cDepth  <- map.get(id) match {
-                            //Found the request with corresponding id!
-                            case Some((RequestEvent.Request(start, url), currDepth)) =>
-                              compEventsRef.update(lst => 
-                                (RequestEvent.Failure(start, url, time, status.toString),
-                                currDepth) +: lst)  
-                              >> IO(currDepth)
-                            
-                            //Odd error that shouldn't happen, would need to investigate
-                            //offer column back to priority queue since we will not work with this "bad" event anymore
-                            case Some((_, currDepth)) => 
-                              colCounter.update(c => c - 1) >>
-                              pq.offer(currDepth) >>
-                              (IO.raiseError(new Exception(
-                              "Got an event that is not request, something is wrong")))
-                        
-                            //No request event found, meaning that it was sometime outside of time range. 
-                            //Thus, create a completed partial event since error status
-                            case None =>
-                              for {
-                                currDepth <- getUnusedColumn(pq).flatMap{
-                                              case Some(value) => IO(value)
-                                              case None => IO.raiseError(new Exception(
-                                                "BADD!! No unused column available. Increase number of columns!!!"))
-                                            }
-                                c         <- colCounter.updateAndGet(c => c + 1)
-                                _         <- maxCounter.update(prev => math.max(prev, c))
-                                _         <- compEventsRef.update(lst => 
-                                              (RequestEvent.Partial(time, status.toString()),
-                                              currDepth) +: lst)
-                              } yield(currDepth)
+            for {
+              map <- eventsRef.get
+              _   <- map.get(id) match {
+                      //Found request event with corresponding id-> good no need to do anything and just wait for next log event with same id
+                      case Some((RequestEvent.Request(start, url), currDepth)) => 
+                        if (status >= 400) {
+                          // update the map to hold the failure event instead and wait for the final event
+                          eventsRef.update(map =>
+                            map + (id -> (RequestEvent.Failure(start, url, time, status.toString), currDepth))
+                          )
+                        } else { 
+                          IO.unit
+                        }
+                      
+                      case Some(_) => IO.unit
 
-                          }
-                _       <- eventsRef.update(m => m - id)
-                _       <- colCounter.update(c => c - 1)
-                _       <- pq.offer(cDepth)
-              } yield ()
-            } else {
-
-              for {
-                map <- eventsRef.get
-                _   <- map.get(id) match {
-                        //Found request event with corresponding id-> good no need to do anything and just wait for next log event with same id
-                        case Some(_) => IO.unit
-
-                        //Request event for this id outside of time range in the past. Store as incomplete partial event since success status code. 
-                        case None =>
-                          for {
-                            cDepth  <- getUnusedColumn(pq).flatMap{
-                                        case Some(value) => IO(value)
-                                        case None => IO.raiseError(new Exception(
-                                          "No unused column available. Increase number of columns!!!"))
-                                      }
-                            c       <- colCounter.updateAndGet(c => c + 1)
-                            _       <- maxCounter.update(prev => math.max(prev, c))
-                            _       <- eventsRef.update(map =>
-                                        map + (id -> (RequestEvent.Partial(time, status.toString()), cDepth))
-                                      )
-                          } yield ()
-                      }
-              } yield()
-
-            }
+                      //Request event for this id outside of time range in the past. Store as incomplete partial event since success status code. 
+                      case None =>
+                        for {
+                          cDepth  <- getUnusedColumn(pq).flatMap{
+                                      case Some(value) => IO(value)
+                                      case None => IO.raiseError(new Exception(
+                                        "No unused column available. Increase number of columns!!!"))
+                                    }
+                          c       <- colCounter.updateAndGet(c => c + 1)
+                          _       <- maxCounter.update(prev => math.max(prev, c))
+                          _       <- eventsRef.update(map =>
+                                      map + (id -> (RequestEvent.Partial(time, status.toString()), cDepth))
+                                    )
+                        } yield ()
+                    }
+            } yield()
 
           //Successful end to a request-> store as completed event
           case Event.Success(id, time, duration) => 
@@ -169,6 +135,12 @@ object EventParser {
                               // we should have had a partial request event and we don't
                               IO(currDepth.copy(used = false))
                             }
+                          
+                          case Some((RequestEvent.Failure(start, url, end, msg), currDepth)) =>
+                            compEventsRef.update(lst =>
+                              (RequestEvent.Failure(start, url, time, msg),
+                              currDepth) +: lst)
+                            >> IO(currDepth)
 
                           case Some((_, currDepth)) => 
                             colCounter.update(c => c - 1) >>
