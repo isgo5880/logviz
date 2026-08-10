@@ -195,12 +195,20 @@ object SplunkClient {
                 val time = spl(0).split(" INFO")(0).drop(1)
                 val request = line.split("HTTP/1.1 GET")(1).drop(1)
                 Some(Event.Request(id, time, request))
+              else if line.contains("HTTP/1.1 POST") then
+                val spl = line.split("HTTP/1.1 POST")
+                val id = spl(0).split("request-id=")(1).dropRight(3)
+                val time = spl(0).split(" INFO")(0).drop(1)
+                val request = line.split("HTTP/1.1 POST")(1).drop(1)
+                Some(Event.Request(id, time, request))
               else if line.contains("HTTP/1.1 ") then
                 val spl = line.split("HTTP/1.1 ")
                 val id = spl(0).split("request-id=")(1).dropRight(3)
                 val time = spl(0).split(" INFO")(0).drop(1)
-                val status = spl(1).split(" ")(0).toInt
-                Some(Event.Response(id, time, status))
+                spl(1).split(" ")(0)
+                  .toIntOption
+                  .map(status => Some(Event.Response(id, time, status)))
+                  .getOrElse(None)
               else if line.contains("Elapsed ") then
                 val spl = line.split("Elapsed ")
                 val id = spl(0).split("request-id=")(1).dropRight(3)
