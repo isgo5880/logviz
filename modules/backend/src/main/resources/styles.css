@@ -82,6 +82,11 @@ input:valid+span::after {
   content: ':';
 }
 
+dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 #zoom {
   grid-row: 6;
   grid-column: 5;
