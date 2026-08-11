@@ -136,11 +136,17 @@ object EventParser {
                               IO(currDepth.copy(used = false))
                             }
 
+                          case Some((RequestEvent.Failure(start, url, end, msg), currDepth)) =>
+                            compEventsRef.update(lst =>
+                              (RequestEvent.Failure(start, url, time, msg),
+                              currDepth) +: lst)
+                            >> IO(currDepth)
+
                           case Some((_, currDepth)) => 
                             colCounter.update(c => c - 1) >>
                             pq.offer(currDepth) >>
                             IO.raiseError(new Exception(
-                            "Got an event that is not request or partial, something is wrong"))
+                            "Got an event that is not request, failure, or partial, something is wrong"))
 
                           // request and success response somewhere in the past outside of date range
                           // thus, add a completed partial event
