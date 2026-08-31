@@ -3,7 +3,6 @@ package latis.logviz
 import cats.effect.IO
 import cats.effect.Resource
 import cats.effect.kernel.Ref
-import cats.syntax.all._
 import calico.html.io.{*, given}
 import fs2.dom.HtmlElement
 

@@ -46,7 +46,7 @@ class LogvizRoutes(eventsource: EventSource, instancesource: InstanceSource) ext
       StaticFile.fromResource("styles.css", req.some).getOrElseF(NotFound())
 
     // event with query params
-    case req @ GET -> Root / "events" :? 
+    case GET -> Root / "events" :? 
     StartDateQueryParamMatcher(startTime) +&
     EndDateQueryParamMatcher(endTime) +&
     InstanceQueryParamMatcher(instance) =>
@@ -69,7 +69,7 @@ class LogvizRoutes(eventsource: EventSource, instancesource: InstanceSource) ext
       }.merge
     
     //default (past 24 hours)
-    case req @ GET -> Root / "events" =>
+    case GET -> Root / "events" =>
       // hard coding times for now
       val end: LocalDateTime = LocalDateTime.now(ZoneOffset.UTC)
       val start: LocalDateTime = end.minusHours(24)
@@ -78,7 +78,7 @@ class LogvizRoutes(eventsource: EventSource, instancesource: InstanceSource) ext
 
       Ok(sse)
 
-    case req @ GET -> Root / "instances" =>
+    case GET -> Root / "instances" =>
       val list = instancesource.instances.map { tup =>
         tup.asJson
       }

@@ -21,8 +21,6 @@ class TimeRangeComponent(
   def render: Resource[IO, HtmlElement[IO]] =
     for {
       start <- Resource.eval(startRef.get)
-      end   <- Resource.eval(endRef.get)
-
       
       startInput  <- div(
                       idAttr := "start-time",

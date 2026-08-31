@@ -44,42 +44,42 @@ object Main extends IOWebApp {
       events      <- Resource.eval(SignallingRef[IO].of[Stream[IO, Event]](Stream.empty))
       instanceRef <- Resource.eval(SignallingRef[IO].of[String](""))
 
-      liveButton  <- button( 
-                      `type` := "button",
-                      "LIVE",
-                      styleAttr <-- liveRef.map{
-                                      case true => "background-color: #db2a30"
-                                      case false => "background-color: #FFFFFF"
-                      },
-                      onClick(_ => {
-                        for {
-                          //TODO "disabling/greying out" endtime button when live so visually looks like its not being used?
-                          live  <- liveRef.updateAndGet(bool => !bool)
+      // liveButton  <- button( 
+      //                 `type` := "button",
+      //                 "LIVE",
+      //                 styleAttr <-- liveRef.map{
+      //                                 case true => "background-color: #db2a30"
+      //                                 case false => "background-color: #FFFFFF"
+      //                 },
+      //                 onClick(_ => {
+      //                   for {
+      //                     //TODO "disabling/greying out" endtime button when live so visually looks like its not being used?
+      //                     live  <- liveRef.updateAndGet(bool => !bool)
 
-                          _     <- if (!live) {
-                                      //going from live to not live: visually it'll look like the canvas stopped moving
-                                      //so endtime should just be where we left off
-                                      endRef.update(t => LocalDateTime.now(ZoneOffset.UTC))
+      //                     _     <- if (!live) {
+      //                                 //going from live to not live: visually it'll look like the canvas stopped moving
+      //                                 //so endtime should just be where we left off
+      //                                 endRef.update(_ => LocalDateTime.now(ZoneOffset.UTC))
                                       
-                                    } else {
-                                      IO.unit
-                                    }
+      //                               } else {
+      //                                 IO.unit
+      //                               }
 
-                          // start <- startRef.get
+      //                     // start <- startRef.get
 
-                          //if I just have params take liveref, then changes to liveref should trigger a change right?
-                          // _     <- if (live) {
-                          //             startRef.set(start)
-                          //             // events.set(ec.getEvents(start.toString()))
-                          //           } else {
-                          //             //updating endRef already calls getevents correctly, so I dont think I need it again
-                          //             //events.set(ec.getEvents(start.toString(), end.toString()))
-                          //             IO.unit
-                          //           }
+      //                     //if I just have params take liveref, then changes to liveref should trigger a change right?
+      //                     // _     <- if (live) {
+      //                     //             startRef.set(start)
+      //                     //             // events.set(ec.getEvents(start.toString()))
+      //                     //           } else {
+      //                     //             //updating endRef already calls getevents correctly, so I dont think I need it again
+      //                     //             //events.set(ec.getEvents(start.toString(), end.toString()))
+      //                     //             IO.unit
+      //                     //           }
                           
-                        } yield ()
-                      })
-                    )
+      //                   } yield ()
+      //                 })
+      //               )
 
       updateSource<- button(
                         `type` := "button",
@@ -88,7 +88,6 @@ object Main extends IOWebApp {
                           for {
                             start <- startRef.get
                             end   <- endRef.get
-                            inst  <- instanceRef.get
                             _     <- liveRef.set(false)
                             _     <- pickedStart.set(start)
                             _     <- pickedEnd.set(end)

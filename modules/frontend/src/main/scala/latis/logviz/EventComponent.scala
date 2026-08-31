@@ -91,7 +91,7 @@ class EventComponent(
       scrollRef     <- Resource.eval(Ref[IO].of(0.0))
       isTop         <- Resource.eval(Ref[IO].of(true))
       rectRef       <- Resource.eval(Ref[IO].of(List[Rectangle]()))
-      end           <- Resource.eval(endTime.get)
+      // end           <- Resource.eval(endTime.get)
       //prevEndRef    <- Resource.eval(Ref[IO].of(end))
       prevZoomRef   <- Resource.eval(Ref[IO].of(1.0))
         _           <- animate(canvas, 
@@ -248,7 +248,7 @@ class EventComponent(
   ): Resource[IO, Dispatcher[IO]] =
     Dispatcher.sequential[IO] evalTap{ dispatcher => 
 
-      def go(timestamp: Double): IO[Unit] = 
+      def go: IO[Unit] = 
         for {
           scroll      <- IO(canvas.parentElement.scrollTop)
           top         <- isTop.get
@@ -361,12 +361,12 @@ class EventComponent(
                     } else {
                       IO.unit
                     }
-          _       <- IO.delay(dom.window.requestAnimationFrame(ts => 
-                      dispatcher.unsafeRunAndForget(go(ts))))
+          _       <- IO.delay(dom.window.requestAnimationFrame(_ => 
+                      dispatcher.unsafeRunAndForget(go)))
         } yield()
 
-      IO.delay(dom.window.requestAnimationFrame(ts => 
-        dispatcher.unsafeRunAndForget(go(ts))))
+      IO.delay(dom.window.requestAnimationFrame(_ => 
+        dispatcher.unsafeRunAndForget(go)))
       }
 
 

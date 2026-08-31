@@ -298,7 +298,7 @@ object SplunkClient {
                       m.get("latest").flatMap(_.toLongOption)
                     ).tupled
                   }.mapFilter(identity).pure
-                case Left(err) =>
+                case Left(_) =>
                   IO.raiseError(new Exception("Source enumeration was unable to be parsed from JSON"))
               }
             }
