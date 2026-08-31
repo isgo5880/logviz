@@ -57,9 +57,10 @@ object EventClient {
   def fromHttpClient(http: Client[IO]): IO[EventClient] =
     (
       Window[IO].location.protocol.get,
-      Window[IO].location.host.get
-    ).mapN { (protocol, host) =>
-      val baseUri = Uri.unsafeFromString(s"$protocol//$host")
+      Window[IO].location.host.get,
+      Window[IO].location.pathname.get
+    ).mapN { (protocol, host, pathname) =>
+      val baseUri = Uri.unsafeFromString(s"$protocol//$host$pathname")
 
       new EventClient {
         override def getEvents(startTime: String, endTime: Option[String], instance: Option[String]): Stream[IO, Event] =         
@@ -70,9 +71,9 @@ object EventClient {
 
           val uri = instance match {
             case Some(value) => 
-              Uri.unsafeFromString(s"$baseUri/events?startTime=$startTime&endTime=$end&instance=$value")
+              Uri.unsafeFromString(s"${baseUri}events?startTime=$startTime&endTime=$end&instance=$value")
             case None =>
-              Uri.unsafeFromString(s"$baseUri/events?startTime=$startTime&endTime=$end")
+              Uri.unsafeFromString(s"${baseUri}events?startTime=$startTime&endTime=$end")
           }
 
           val request = Request[IO](method = Method.GET, uri = uri)
@@ -95,7 +96,7 @@ object EventClient {
           }
 
         override def getInstances: IO[List[String]] = {
-          val uri = Uri.unsafeFromString(s"$baseUri/instances")
+          val uri = Uri.unsafeFromString(s"${baseUri}instances")
           val request = Request[IO](method = Method.GET, uri = uri)
 
           http.expect(request)(jsonOf[IO, List[String]])
