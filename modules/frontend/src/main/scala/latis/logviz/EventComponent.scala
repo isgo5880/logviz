@@ -420,9 +420,11 @@ class EventComponent(
                                 if (msg.contains("msg: ")) {
                                   val error = msg.split("msg: ")(1)
                                   EventDetails(s"Failure: $error", "unknown", end, "failed", "unknown")
-                                } else {
+                                } else if (msg.contains("duration: ")){
                                   val duration = msg.split("duration: ")(1)
                                   EventDetails("Success", "unknown", end, duration, "unknown")
+                                } else {
+                                  EventDetails("Partial", "unknown", end, "unknown", s"status of $msg")
                                 }
                             }
                             
