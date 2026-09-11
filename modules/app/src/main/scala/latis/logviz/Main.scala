@@ -35,6 +35,7 @@ object Main extends IOApp.Simple {
         .default[IO]
         .withHost(ipv4"0.0.0.0")
         .withHttpApp(LogvizRoutes(es._1, es._2).routes.orNotFound)
+        .withIdleTimeout(105.seconds)
         .withShutdownTimeout(5.seconds)
         .build
         .useForever
